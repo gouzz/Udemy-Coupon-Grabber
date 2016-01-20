@@ -36,12 +36,11 @@ public class UdemyCoupon {
     public static void main(String[] args) throws IOException {
         UdemyCoupon d = new UdemyCoupon();
 
-        //d.getCouponEachPage();
-        //d.readArrayList();
-        d.sendPost();
+        d.getCouponEachPage();
+        d.readArrayList();
+        //d.sendPost();
         //d.grabCookies();
     }
-
 
     public void sendPost() throws IOException {
         /*Get Cookies*/
@@ -138,7 +137,7 @@ public class UdemyCoupon {
 
         if (response.toString().contains("Por favor, verifique seu e-mail e sua senha.")) {
             System.out.println("Incorrect email or password!");
-        } else if(response.toString().contains("nforme um endereço de email válido")){
+        } else if (response.toString().contains("nforme um endereço de email válido")) {
             System.out.println("Email syntax invalid!");
         } else {
             System.out.println("You're in!");
@@ -158,29 +157,41 @@ public class UdemyCoupon {
 
     public void getCouponEachPage() throws IOException {
 
-        Document doc = null;
-        doc = Jsoup.connect("http://www.promocoupons24.com/").get();
+        for (int j = 19; j > 0; j--) {
+            String url = "http://www.promocoupons24.com/search?updated-max=2016-01-" + j + "T23%3A30%3A00-08%3A00&max-results=46";
+            Document doc = null;
+            doc = Jsoup.connect(url).get();
 
-        Elements coupons = doc.select("a:containsOwn(https://www.udemy.com)");
+            Elements coupons = doc.select("a:containsOwn(https://www.udemy.com)");
 
-        String couponURL = String.valueOf(coupons);
-        String token[] = null;
+            String couponURL = String.valueOf(coupons);
+            String token[] = new String[1000];
 
-        for (int i = 0; i < 10; i++) { // 10 - 12 Coupons per page
+            for (int i = 0; i < 30; i++) { // 10 - 12 Coupons per page
 
-            if (couponURL.contains("</a>")) {
-                token = couponURL.split("</a>");
+                if (couponURL.contains("</a>")) {
+                    token = couponURL.split("</a>");
+                }
+                //      System.out.println("Day : " + j);
+                handleURL(token[i]);
             }
-            handleURL(token[i]);
         }
     }
 
     //handleURL(String token) -> Handles each url so it's parsed in the correct format.
     public void handleURL(String token) {
-        String tokenEachURL[] = null;
-        tokenEachURL = token.split(">:");
-        tokenEachURL = tokenEachURL[1].split("</a>");
+        String tokenEachURL[] = new String[1000];
+        //     String tokenEachURL2[] = new String [1000];
 
-        urls.add(tokenEachURL[0]);
+        if (token.contains(">:")) {
+            tokenEachURL = token.split(">:");
+
+            if (tokenEachURL[1].contains("&nbsp")) {
+                tokenEachURL = tokenEachURL[1].split("&nbsp;");
+
+            }
+            urls.add(tokenEachURL[1].trim());
+
+        }
     }
 }
