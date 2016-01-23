@@ -24,8 +24,6 @@ import java.util.logging.Logger;
 
 public class UdemyCoupon {
 
-    ArrayList<String> urls = new ArrayList<>();
-
     public final String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
             + "type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next"
             + "=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
@@ -34,45 +32,37 @@ public class UdemyCoupon {
             + "2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
 
     public static void main(String[] args) throws IOException {
-        UdemyCoupon d = new UdemyCoupon();
+        UdemyCoupon uc = new UdemyCoupon();
 
-        d.getCouponEachPage();
-        d.readArrayList();
-        //d.sendPost();
-        //d.grabCookies();
+        //uc.getCouponEachPage();
+        // uc.readArrayList();
+        // 1. Send 'Get' Request to the login page in order to get the cookies and 'csrf' token.
+        uc.sendGet();
+        // 2. Send the 'Post' Request after getting the cookies.
+        uc.sendPost();
+        //uc.grabCookies();
     }
 
-    public void sendPost() throws IOException {
-        /*Get Cookies*/
+    private ArrayList<String> urls = new ArrayList<>();
+    private List<String> cookies;
+    private String cookiesArray[] = new String[100];
 
+    public String[] sendGet() throws MalformedURLException, IOException {
         HttpsURLConnection urlConnection
                 = (HttpsURLConnection) new URL(urlGet)
                 .openConnection();
 
-        List<String> cookies = urlConnection.getHeaderFields().get("Set-Cookie");
-
-        String token[] = null;
-        String token2[] = new String[10];
-        String header, data;
-        String cookiesRequested[][] = new String[25][200];
+        cookies = urlConnection.getHeaderFields().get("Set-Cookie");
         for (int i = 0; i < cookies.size(); i++) {
-            //  System.out.println(cookies.get(i));
             if (cookies.get(i).contains(";")) {
-                token = cookies.get(i).split(";");
-                if (token[0].contains("=")) {
-                    token2 = token[0].split("=");
-                    if (token2.length == 2 && token2[0].trim().length() > 0 && token2[1].trim().length() > 0) {
-                        cookiesRequested[0][i] = token2[0];
-                        cookiesRequested[1][i] = token2[1];
-                    } else {
-                        cookiesRequested[0][i] = token2[0];
-                        cookiesRequested[1][i] = "";
-                    }
-                    //   System.out.println(cookiesRequested[0][i] + "=" + cookiesRequested[1][i]);
-                }
-
+                cookiesArray[i] = cookies.get(i).split(";")[0];
+                System.out.println(i + " - " + cookiesArray[i]);
             }
         }
+        return cookiesArray;
+    }
+
+    public int sendPost() throws IOException {
 
         /* Send the Request with the cookies*/
         URL obj = new URL(urlPost);
@@ -84,15 +74,16 @@ public class UdemyCoupon {
         String cookieTotal = "";
         int posTokenArray = 0;
         for (int i = 0; i < cookies.size(); i++) {
-            cookieTotal += cookiesRequested[0][i] + "=" + cookiesRequested[1][i];
             if (i < cookies.size() - 1) {
+                cookieTotal += getCookiesArray()[i];
                 cookieTotal += ";";
+
             }
-            if (cookiesRequested[0][i].contains("csrftoken")) {
+            if (getCookiesArray()[i].contains("csrftoken")) {
                 posTokenArray = i;
             }
-
         }
+        
         con.setUseCaches(false);
         con.setRequestMethod("POST");
         con.setRequestProperty("Host", "www.udemy.com");
@@ -101,29 +92,25 @@ public class UdemyCoupon {
         con.setRequestProperty("Accept-Language", "pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3");
         con.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
 
-        //   System.out.println(cookieTotal);
         con.setRequestProperty("Cookie", cookieTotal);
         con.setRequestProperty("Connection", "keep-alive");
 
         con.setDoOutput(true);
         con.setDoInput(true);
 
-        String postParams = "csrfmiddlewaretoken=" + cookiesRequested[1][posTokenArray] + "&locale"
+        String postParams = "csrfmiddlewaretoken=" + getCookiesArray()[posTokenArray].split("=")[1] + "&locale"
                 + "=pt_BR&email=testeom&password=tete&submit=Acessar";
 
-        // Send post request
         DataOutputStream wr = new DataOutputStream(con.getOutputStream());
         wr.writeBytes(postParams);
         wr.flush();
         wr.close();
 
-        System.out.println("csrfmiddlewaretoken " + cookiesRequested[1][posTokenArray]);
-        System.out.println(con.getResponseCode());
-
-        int responseCode = con.getResponseCode();
         System.out.println("\nSending 'POST' request to URL : " + urlPost);
         System.out.println("Post parameters : " + postParams);
-        System.out.println("Response Code : " + responseCode);
+        System.out.println("Response Code : " + con.getResponseCode());
+        System.out.println("Cookies : " + cookieTotal);
+        System.out.println("csrfmiddlewaretoken " + getCookiesArray()[posTokenArray].split("=")[1]);
 
         BufferedReader in
                 = new BufferedReader(new InputStreamReader(con.getInputStream()));
@@ -135,24 +122,25 @@ public class UdemyCoupon {
         }
         System.out.println(response);
 
-        if (response.toString().contains("Por favor, verifique seu e-mail e sua senha.")) {
-            System.out.println("Incorrect email or password!");
-        } else if (response.toString().contains("nforme um endereço de email válido")) {
-            System.out.println("Email syntax invalid!");
-        } else {
-            System.out.println("You're in!");
-        }
-
         in.close();
         con.disconnect();
+
+        if (response.toString().contains("Por favor, verifique seu e-mail e sua senha.")) {
+            System.out.println("Incorrect email or password!");
+            return 0;
+        } else if (response.toString().contains("nforme um endereço de email válido")) {
+            System.out.println("Email syntax invalid!");
+            return 0;
+        } else {
+            System.out.println("You're in!");
+            return 1;
+        }
     }
 
     public void readArrayList() {
-
         for (String url : urls) {
             System.out.println(url);
         }
-
     }
 
     public void getCouponEachPage() throws IOException {
@@ -193,5 +181,13 @@ public class UdemyCoupon {
             urls.add(tokenEachURL[1].trim());
 
         }
+    }
+
+    public String[] getCookiesArray() {
+        return cookiesArray;
+    }
+
+    public void setCookiesArray(String[] cookiesArray) {
+        this.cookiesArray = cookiesArray;
     }
 }
