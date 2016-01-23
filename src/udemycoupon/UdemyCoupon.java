@@ -15,12 +15,15 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jsoup.HttpStatusException;
 
 public class UdemyCoupon {
 
@@ -33,21 +36,21 @@ public class UdemyCoupon {
 
     public static void main(String[] args) throws IOException {
         UdemyCoupon uc = new UdemyCoupon();
-
-        //uc.getCouponEachPage();
+        uc.getCouponEachPage();
         // uc.readArrayList();
-        // 1. Send 'Get' Request to the login page in order to get the cookies and 'csrf' token.
-        uc.sendGet();
-        // 2. Send the 'Post' Request after getting the cookies.
-        uc.sendPost();
-        //uc.grabCookies();
+        uc.sendGetLogin();
+        uc.sendPostLogin();
+        uc.sendGetApplyCoupon();
+        //uc.readArrayList();
     }
 
+    Date date = new Date();
     private ArrayList<String> urls = new ArrayList<>();
     private List<String> cookies;
     private String cookiesArray[] = new String[100];
+    private String cookieTotal = "";
 
-    public String[] sendGet() throws MalformedURLException, IOException {
+    public String[] sendGetLogin() throws MalformedURLException, IOException {
         HttpsURLConnection urlConnection
                 = (HttpsURLConnection) new URL(urlGet)
                 .openConnection();
@@ -62,28 +65,25 @@ public class UdemyCoupon {
         return cookiesArray;
     }
 
-    public int sendPost() throws IOException {
+    public int sendPostLogin() throws IOException {
 
-        /* Send the Request with the cookies*/
         URL obj = new URL(urlPost);
 
         System.out.println("A conectar...");
         HttpsURLConnection con;
         con = (HttpsURLConnection) obj.openConnection();
 
-        String cookieTotal = "";
         int posTokenArray = 0;
         for (int i = 0; i < cookies.size(); i++) {
             if (i < cookies.size() - 1) {
-                cookieTotal += getCookiesArray()[i];
-                cookieTotal += ";";
-
+                cookieTotal += cookiesArray[i] + ";";
             }
-            if (getCookiesArray()[i].contains("csrftoken")) {
+
+            if (cookiesArray[i].contains("csrftoken")) {
                 posTokenArray = i;
             }
         }
-        
+
         con.setUseCaches(false);
         con.setRequestMethod("POST");
         con.setRequestProperty("Host", "www.udemy.com");
@@ -98,8 +98,8 @@ public class UdemyCoupon {
         con.setDoOutput(true);
         con.setDoInput(true);
 
-        String postParams = "csrfmiddlewaretoken=" + getCookiesArray()[posTokenArray].split("=")[1] + "&locale"
-                + "=pt_BR&email=testeom&password=tete&submit=Acessar";
+        String postParams = "csrfmiddlewaretoken=" + cookiesArray[posTokenArray].split("=")[1] + "&locale"
+                + "=pt_BR&email=miguelfbrito11@gmail.com&password=HBewh36&submit=Acessar";
 
         DataOutputStream wr = new DataOutputStream(con.getOutputStream());
         wr.writeBytes(postParams);
@@ -110,7 +110,7 @@ public class UdemyCoupon {
         System.out.println("Post parameters : " + postParams);
         System.out.println("Response Code : " + con.getResponseCode());
         System.out.println("Cookies : " + cookieTotal);
-        System.out.println("csrfmiddlewaretoken " + getCookiesArray()[posTokenArray].split("=")[1]);
+        System.out.println("csrfmiddlewaretoken " + cookiesArray[posTokenArray].split("=")[1]);
 
         BufferedReader in
                 = new BufferedReader(new InputStreamReader(con.getInputStream()));
@@ -137,6 +137,52 @@ public class UdemyCoupon {
         }
     }
 
+    public void sendGetApplyCoupon() throws MalformedURLException, IOException {
+
+        for (int i = 0; i < urls.size(); i++) {
+
+            System.out.println("A conectar a : " + urls.get(i));
+            URL obj2;
+            HttpsURLConnection con2 = null;
+
+            try {
+                Document doc = Jsoup.connect(urls.get(i)).get();
+                Elements link;
+
+                if (doc.select("a:containsOwn(Take This Course)").hasText()) {
+                    link = doc.select("a:containsOwn(Take This Course)");
+                    obj2 = new URL("https://www.udemy.com" + link.attr("href"));
+                    System.out.println(obj2.toString());
+                } else {
+                    link = doc.select("a:containsOwn(Start Learning Now)");
+                    obj2 = new URL(link.attr("href"));
+                    System.out.println("URL : " + obj2.toString());
+                }
+
+                String s = link.attr("href");
+                System.out.println(s);
+
+                con2 = (HttpsURLConnection) obj2.openConnection();
+                con2.setRequestMethod("GET");
+                con2.setRequestProperty("Host", "www.udemy.com");
+                con2.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0");
+                con2.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                con2.setRequestProperty("Accept-Language", "pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3");
+                con2.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
+
+                con2.setRequestProperty("Cookie", cookieTotal);
+                con2.setRequestProperty("Connection", "keep-alive");
+
+                con2.disconnect();
+
+            } catch (HttpStatusException ex) {
+                System.out.println("URL Inválido + " + urls.get(i));
+            }
+
+        }
+
+    }
+
     public void readArrayList() {
         for (String url : urls) {
             System.out.println(url);
@@ -145,10 +191,9 @@ public class UdemyCoupon {
 
     public void getCouponEachPage() throws IOException {
 
-        for (int j = 19; j > 0; j--) {
+        for (int j = date.getDate(); j > 20; j--) {
             String url = "http://www.promocoupons24.com/search?updated-max=2016-01-" + j + "T23%3A30%3A00-08%3A00&max-results=46";
-            Document doc = null;
-            doc = Jsoup.connect(url).get();
+            Document doc = Jsoup.connect(url).get();
 
             Elements coupons = doc.select("a:containsOwn(https://www.udemy.com)");
 
@@ -160,34 +205,23 @@ public class UdemyCoupon {
                 if (couponURL.contains("</a>")) {
                     token = couponURL.split("</a>");
                 }
-                //      System.out.println("Day : " + j);
-                handleURL(token[i]);
+                handleUrl(token[i]);
             }
         }
     }
 
-    //handleURL(String token) -> Handles each url so it's parsed in the correct format.
-    public void handleURL(String token) {
-        String tokenEachURL[] = new String[1000];
-        //     String tokenEachURL2[] = new String [1000];
-
+    public void handleUrl(String token) {
+        String tokenEachURL[] = new String[250];
         if (token.contains(">:")) {
             tokenEachURL = token.split(">:");
-
             if (tokenEachURL[1].contains("&nbsp")) {
                 tokenEachURL = tokenEachURL[1].split("&nbsp;");
 
             }
-            urls.add(tokenEachURL[1].trim());
-
+            if (!urls.contains(tokenEachURL[1].trim())) {
+                urls.add(tokenEachURL[1].trim());
+            }
         }
     }
 
-    public String[] getCookiesArray() {
-        return cookiesArray;
-    }
-
-    public void setCookiesArray(String[] cookiesArray) {
-        this.cookiesArray = cookiesArray;
-    }
 }
