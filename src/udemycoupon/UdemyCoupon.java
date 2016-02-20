@@ -11,6 +11,7 @@ import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.CookieManager;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -24,35 +25,39 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jsoup.HttpStatusException;
-
+//
 public class UdemyCoupon {
 
-    public final String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
+    public final static String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
             + "type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next"
             + "=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
     public final String urlPost = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type"
             + "=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%"
             + "2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
-
+    public final static String urlCourses = "https://www.udemy.com/courses";
+    
     public static void main(String[] args) throws IOException {
         UdemyCoupon uc = new UdemyCoupon();
-        uc.getCouponEachPage();
+
+//        uc.getCouponEachPage();
         // uc.readArrayList();
-        uc.sendGetLogin();
+        uc.sendGetLogin(urlGet);
         uc.sendPostLogin();
-        uc.sendGetApplyCoupon();
+        uc.sendGetLogin(urlCourses);
+//        uc.sendGetApplyCoupon();
+
         //uc.readArrayList();
     }
 
     Date date = new Date();
     private ArrayList<String> urls = new ArrayList<>();
     private List<String> cookies;
-    private String cookiesArray[] = new String[100];
+    private String cookiesArray[] = new String[1000];
     private String cookieTotal = "";
 
-    public String[] sendGetLogin() throws MalformedURLException, IOException {
+    public String[] sendGetLogin(String url) throws MalformedURLException, IOException {
         HttpsURLConnection urlConnection
-                = (HttpsURLConnection) new URL(urlGet)
+                = (HttpsURLConnection) new URL(url)
                 .openConnection();
 
         cookies = urlConnection.getHeaderFields().get("Set-Cookie");
@@ -62,6 +67,19 @@ public class UdemyCoupon {
                 System.out.println(i + " - " + cookiesArray[i]);
             }
         }
+
+        BufferedReader in
+                = new BufferedReader(new InputStreamReader(urlConnection.getInputStream()));
+        String inputLine;
+        StringBuffer response = new StringBuffer();
+
+        while ((inputLine = in.readLine()) != null) {
+            response.append(inputLine);
+        }
+        System.out.println("Response from the get: ");
+        System.out.println(response);
+
+        in.close();
         return cookiesArray;
     }
 
@@ -75,8 +93,9 @@ public class UdemyCoupon {
 
         int posTokenArray = 0;
         for (int i = 0; i < cookies.size(); i++) {
+            cookieTotal += cookiesArray[i];
             if (i < cookies.size() - 1) {
-                cookieTotal += cookiesArray[i] + ";";
+                cookieTotal += ";";
             }
 
             if (cookiesArray[i].contains("csrftoken")) {
@@ -84,6 +103,7 @@ public class UdemyCoupon {
             }
         }
 
+        con.setInstanceFollowRedirects(false);
         con.setUseCaches(false);
         con.setRequestMethod("POST");
         con.setRequestProperty("Host", "www.udemy.com");
@@ -99,7 +119,7 @@ public class UdemyCoupon {
         con.setDoInput(true);
 
         String postParams = "csrfmiddlewaretoken=" + cookiesArray[posTokenArray].split("=")[1] + "&locale"
-                + "=pt_BR&email=miguelfbrito11@gmail.com&password=HBewh36&submit=Acessar";
+                + "=pt_BR&email=joaoteste123@hmamail.com&password=gomas123#&submit=Acessar";
 
         DataOutputStream wr = new DataOutputStream(con.getOutputStream());
         wr.writeBytes(postParams);
@@ -123,44 +143,52 @@ public class UdemyCoupon {
         System.out.println(response);
 
         in.close();
-        con.disconnect();
+        //con.disconnect();
 
         if (response.toString().contains("Por favor, verifique seu e-mail e sua senha.")) {
-            System.out.println("Incorrect email or password!");
+            System.out.println("Response to Login : Incorrect email or password!");
             return 0;
         } else if (response.toString().contains("nforme um endereço de email válido")) {
-            System.out.println("Email syntax invalid!");
+            System.out.println("Response to Login : Email syntax invalid!");
+            return 0;
+        } else if (response.toString().contains("excedeu o número máximo de")) {
+            System.out.println("Response to Login : Banned for an hour due to a lot of login trials!");
             return 0;
         } else {
-            System.out.println("You're in!");
+            System.out.println("Response to Login : Logged successfully!");
             return 1;
         }
     }
 
     public void sendGetApplyCoupon() throws MalformedURLException, IOException {
+        System.out.println("\n\n ApplyCoupon::");
+        for (int i = 15; i < 20/*urls.size()*/; i++) {
 
-        for (int i = 0; i < urls.size(); i++) {
-
-            System.out.println("A conectar a : " + urls.get(i));
+            System.out.println("\nConnecting to : " + urls.get(i));
             URL obj2;
             HttpsURLConnection con2 = null;
 
             try {
                 Document doc = Jsoup.connect(urls.get(i)).get();
                 Elements link;
+                String url = "";
 
                 if (doc.select("a:containsOwn(Take This Course)").hasText()) {
                     link = doc.select("a:containsOwn(Take This Course)");
-                    obj2 = new URL("https://www.udemy.com" + link.attr("href"));
-                    System.out.println(obj2.toString());
+                    url = ("https://www.udemy.com" + link.attr("href"));
                 } else {
                     link = doc.select("a:containsOwn(Start Learning Now)");
-                    obj2 = new URL(link.attr("href"));
-                    System.out.println("URL : " + obj2.toString());
+                    url = (link.attr("href"));
                 }
 
                 String s = link.attr("href");
-                System.out.println(s);
+                // System.out.println(s);
+
+                UdemyCoupon uc = new UdemyCoupon();
+                //   uc.sendGetLogin(urls.get(i));
+
+                obj2 = new URL(url);
+                System.out.println("URL :: " + obj2.toString());
 
                 con2 = (HttpsURLConnection) obj2.openConnection();
                 con2.setRequestMethod("GET");
@@ -168,15 +196,31 @@ public class UdemyCoupon {
                 con2.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0");
                 con2.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
                 con2.setRequestProperty("Accept-Language", "pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3");
-                con2.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
+                //  con2.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
 
+                con2.setRequestProperty("Referer", url);
                 con2.setRequestProperty("Cookie", cookieTotal);
                 con2.setRequestProperty("Connection", "keep-alive");
 
+                System.out.println("");
+                System.out.println("Cookies Apply Coupon : " + cookieTotal);
+                System.out.println("Response Code: " + con2.getResponseCode());
+
+                BufferedReader in
+                        = new BufferedReader(new InputStreamReader(con2.getInputStream()));
+                String inputLine;
+                StringBuilder response = new StringBuilder();
+
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
+                }
+                System.out.println(response);
+
+                in.close();
                 con2.disconnect();
 
             } catch (HttpStatusException ex) {
-                System.out.println("URL Inválido + " + urls.get(i));
+                System.out.println("Invalid URL :  " + urls.get(i));
             }
 
         }
