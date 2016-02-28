@@ -7,14 +7,9 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import javax.net.ssl.HttpsURLConnection;
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.CookieManager;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.awt.*;
+import java.io.*;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -24,18 +19,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.jsoup.HttpStatusException;
+import org.omg.SendingContext.RunTime;
+
 //
 public class UdemyCoupon {
 
-    public final static String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
+    public static final String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
             + "type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next"
             + "=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
     public final String urlPost = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type"
             + "=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%"
             + "2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
-    public final static String urlCourses = "https://www.udemy.com/courses";
-    
+    public static final String urlCourses = "https://www.udemy.com/courses";
+    public static final String USER_AGENT = "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0";
+
     public static void main(String[] args) throws IOException {
         UdemyCoupon uc = new UdemyCoupon();
 
@@ -64,7 +63,6 @@ public class UdemyCoupon {
         for (int i = 0; i < cookies.size(); i++) {
             if (cookies.get(i).contains(";")) {
                 cookiesArray[i] = cookies.get(i).split(";")[0];
-                System.out.println(i + " - " + cookiesArray[i]);
             }
         }
 
@@ -76,8 +74,8 @@ public class UdemyCoupon {
         while ((inputLine = in.readLine()) != null) {
             response.append(inputLine);
         }
-        System.out.println("Response from the get: ");
-        System.out.println(response);
+//        System.out.println("Response from the get: ");
+        //     System.out.println(response);
 
         in.close();
         return cookiesArray;
@@ -85,11 +83,15 @@ public class UdemyCoupon {
 
     public int sendPostLogin() throws IOException {
 
-        URL obj = new URL(urlPost);
+        CookieManager cookieManager = new CookieManager();
+        CookieHandler.setDefault(cookieManager);
 
+        URL obj = new URL(urlPost);
+        boolean redirect = false;
         System.out.println("A conectar...");
         HttpsURLConnection con;
         con = (HttpsURLConnection) obj.openConnection();
+        con.setInstanceFollowRedirects(true);
 
         int posTokenArray = 0;
         for (int i = 0; i < cookies.size(); i++) {
@@ -103,17 +105,14 @@ public class UdemyCoupon {
             }
         }
 
-        con.setInstanceFollowRedirects(false);
         con.setUseCaches(false);
         con.setRequestMethod("POST");
         con.setRequestProperty("Host", "www.udemy.com");
-        con.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0");
+        con.setRequestProperty("User-Agent", USER_AGENT);
         con.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
         con.setRequestProperty("Accept-Language", "pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3");
         con.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
-
         con.setRequestProperty("Cookie", cookieTotal);
-        con.setRequestProperty("Connection", "keep-alive");
 
         con.setDoOutput(true);
         con.setDoInput(true);
@@ -130,7 +129,8 @@ public class UdemyCoupon {
         System.out.println("Post parameters : " + postParams);
         System.out.println("Response Code : " + con.getResponseCode());
         System.out.println("Cookies : " + cookieTotal);
-        System.out.println("csrfmiddlewaretoken " + cookiesArray[posTokenArray].split("=")[1]);
+        System.out.println("csrfmiddlewaretoken : " + cookiesArray[posTokenArray].split("=")[1]);
+
 
         BufferedReader in
                 = new BufferedReader(new InputStreamReader(con.getInputStream()));
@@ -140,24 +140,21 @@ public class UdemyCoupon {
         while ((inputLine = in.readLine()) != null) {
             response.append(inputLine);
         }
-        System.out.println(response);
-
+        System.out.println("Response: " + response);
         in.close();
         //con.disconnect();
 
         if (response.toString().contains("Por favor, verifique seu e-mail e sua senha.")) {
             System.out.println("Response to Login : Incorrect email or password!");
-            return 0;
         } else if (response.toString().contains("nforme um endereço de email válido")) {
             System.out.println("Response to Login : Email syntax invalid!");
-            return 0;
         } else if (response.toString().contains("excedeu o número máximo de")) {
             System.out.println("Response to Login : Banned for an hour due to a lot of login trials!");
-            return 0;
         } else {
             System.out.println("Response to Login : Logged successfully!");
-            return 1;
         }
+
+        return 1;
     }
 
     public void sendGetApplyCoupon() throws MalformedURLException, IOException {
@@ -266,6 +263,22 @@ public class UdemyCoupon {
                 urls.add(tokenEachURL[1].trim());
             }
         }
+    }
+
+    public void writeHtml(String text) throws IOException {
+        FileWriter f;
+        BufferedWriter bw;
+        try {
+            f = new FileWriter("file.html");
+            bw = new BufferedWriter(f);
+            bw.write(text);
+            f.close();
+        } catch (IOException e) {
+            System.out.println("Failed to write on file!");
+            e.printStackTrace();
+        }
+        String command = "cmd.exe /c start chrome D:/Coding/Udemy-Coupon-Grabber/file.html";
+        Runtime.getRuntime().exec(command);
     }
 
 }
