@@ -26,6 +26,8 @@ import org.omg.SendingContext.RunTime;
 //
 public class UdemyCoupon {
 
+    CookieManager cookieManager = new CookieManager();
+
     public static final String urlGet = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_"
             + "type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next"
             + "=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR";
@@ -38,14 +40,14 @@ public class UdemyCoupon {
     public static void main(String[] args) throws IOException {
         UdemyCoupon uc = new UdemyCoupon();
 
-//        uc.getCouponEachPage();
-        // uc.readArrayList();
-        uc.sendGetLogin(urlGet);
+        uc.getCouponEachPage();
+        uc.readArrayList();
+       uc.sendGetLogin(urlGet);
         uc.sendPostLogin();
-        uc.sendGetLogin(urlCourses);
-//        uc.sendGetApplyCoupon();
+        // uc.sendGetLogin(urlCourses);
+  uc.sendGetApplyCoupon();
 
-        //uc.readArrayList();
+     //uc.readArrayList();
     }
 
     Date date = new Date();
@@ -55,6 +57,8 @@ public class UdemyCoupon {
     private String cookieTotal = "";
 
     public String[] sendGetLogin(String url) throws MalformedURLException, IOException {
+        CookieHandler.setDefault(cookieManager);
+
         HttpsURLConnection urlConnection
                 = (HttpsURLConnection) new URL(url)
                 .openConnection();
@@ -74,8 +78,7 @@ public class UdemyCoupon {
         while ((inputLine = in.readLine()) != null) {
             response.append(inputLine);
         }
-//        System.out.println("Response from the get: ");
-        //     System.out.println(response);
+        writeHtml(response.toString());
 
         in.close();
         return cookiesArray;
@@ -83,11 +86,9 @@ public class UdemyCoupon {
 
     public int sendPostLogin() throws IOException {
 
-        CookieManager cookieManager = new CookieManager();
         CookieHandler.setDefault(cookieManager);
 
         URL obj = new URL(urlPost);
-        boolean redirect = false;
         System.out.println("A conectar...");
         HttpsURLConnection con;
         con = (HttpsURLConnection) obj.openConnection();
@@ -96,12 +97,15 @@ public class UdemyCoupon {
         int posTokenArray = 0;
         for (int i = 0; i < cookies.size(); i++) {
             cookieTotal += cookiesArray[i];
+            System.out.println(i + " - " + cookiesArray[i]);
             if (i < cookies.size() - 1) {
                 cookieTotal += ";";
             }
-
-            if (cookiesArray[i].contains("csrftoken")) {
-                posTokenArray = i;
+            //TODO : Fix NullPointException here
+            if (cookiesArray[i] != null) {
+                if (cookiesArray[i].contains("csrftoken")) {
+                    posTokenArray = i;
+                }
             }
         }
 
@@ -140,7 +144,7 @@ public class UdemyCoupon {
         while ((inputLine = in.readLine()) != null) {
             response.append(inputLine);
         }
-        System.out.println("Response: " + response);
+        writeHtml(response.toString());
         in.close();
         //con.disconnect();
 
@@ -159,10 +163,12 @@ public class UdemyCoupon {
 
     public void sendGetApplyCoupon() throws MalformedURLException, IOException {
         System.out.println("\n\n ApplyCoupon::");
-        for (int i = 15; i < 20/*urls.size()*/; i++) {
+        CookieHandler.setDefault(cookieManager);
+
+        for (int i = 0; i < urls.size()/*urls.size()*/; i++) {
 
             System.out.println("\nConnecting to : " + urls.get(i));
-            URL obj2;
+            URL obj2 = null;
             HttpsURLConnection con2 = null;
 
             try {
@@ -184,8 +190,13 @@ public class UdemyCoupon {
                 UdemyCoupon uc = new UdemyCoupon();
                 //   uc.sendGetLogin(urls.get(i));
 
-                obj2 = new URL(url);
-                System.out.println("URL :: " + obj2.toString());
+                try {
+                    obj2 = new URL(url);
+                } catch (MalformedURLException ex) {
+                    System.out.println("Erro!");
+                    continue;
+                }
+                System.out.println("URL :: " + url);
 
                 con2 = (HttpsURLConnection) obj2.openConnection();
                 con2.setRequestMethod("GET");
@@ -193,7 +204,7 @@ public class UdemyCoupon {
                 con2.setRequestProperty("User-Agent", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:43.0) Gecko/20100101 Firefox/43.0");
                 con2.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
                 con2.setRequestProperty("Accept-Language", "pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3");
-                //  con2.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
+                con2.setRequestProperty("Referer", "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type=popup&showSkipButton=1&returnUrlAfterLogin=https%3A%2F%2Fwww.udemy.com%2F&next=https%3A%2F%2Fwww.udemy.com%2F&locale=pt_BR");
 
                 con2.setRequestProperty("Referer", url);
                 con2.setRequestProperty("Cookie", cookieTotal);
@@ -232,7 +243,7 @@ public class UdemyCoupon {
 
     public void getCouponEachPage() throws IOException {
 
-        for (int j = date.getDate(); j > 20; j--) {
+        for (int j = date.getDate(); j > 0; j--) {
             String url = "http://www.promocoupons24.com/search?updated-max=2016-01-" + j + "T23%3A30%3A00-08%3A00&max-results=46";
             Document doc = Jsoup.connect(url).get();
 
