@@ -4,7 +4,7 @@ import java.util.Objects;
 
 public class Course {
 
-    Course(String couponUrl){
+    public Course(String couponUrl){
         this.setCouponUrl(couponUrl);
     }
 
@@ -27,10 +27,6 @@ public class Course {
         this.couponUrl = couponUrl;
     }
 
-    public void extractUrlFromTag(){
-        String url = couponUrl.split("href=\"")[1].split("\"")[0];
-        setCouponUrl(url);
-    }
 
     @Override
     public boolean equals(Object o) {

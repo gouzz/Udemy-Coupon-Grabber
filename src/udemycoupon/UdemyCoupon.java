@@ -17,7 +17,7 @@ import static udemycoupon.Constants.DAYS_RANGE;
 //
 public class UdemyCoupon {
 
-    CookieManager cookieManager = new CookieManager();
+    private CookieManager cookieManager = new CookieManager();
     public static final String urlGet =
             "https://www.udemy.com/join/login-popup/?next=https://www.udemy.com/&returnUrlAfterLogin=https://www.udemy.com/&display_type=popup&showSkipButton=1&displayType=ajax&locale=pt_BR&force_login=1";
     public final String urlPost = "https://www.udemy.com/join/login-popup/?displayType=ajax&display_type"
